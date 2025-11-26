@@ -410,7 +410,6 @@
   animation-delay: 0.4s;
 }
 
-
 /* Chat Input */
 .chatInputContainer {
   padding: 1.5rem 2rem;
@@ -428,6 +427,92 @@
   border-radius: 12px;
   padding: 0.75rem 1rem;
   transition: all 0.3s ease;
+  position: relative;
+}
+
+.apiSelector {
+  position: relative;
+  margin-bottom: 4px; /* Align with input text baseline roughly */
+}
+
+.apiSelectorBtn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.apiSelectorBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+  border-color: var(--primary);
+}
+
+.apiSelectorBtn img {
+  border-radius: 4px;
+}
+
+.apiMenu {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 8px;
+  background: rgba(30, 41, 59, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  animation: menuFadeIn 0.2s ease-out;
+}
+
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.apiMenuItem {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.813rem;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.apiMenuItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.apiMenuItem.active {
+  background: rgba(79, 209, 197, 0.1);
+  color: var(--primary);
 }
 
 .inputWrapper:focus-within {
@@ -550,4 +635,3 @@
 .exportBtn:active {
   transform: translateY(0);
 }
-

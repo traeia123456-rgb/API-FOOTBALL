@@ -133,10 +133,16 @@ class AIService {
     }
   }
 
-  async executeFootballQuery(intent: string | null, entities: QueryResult['entities']) {
+  async executeFootballQuery(intent: string | null, entities: QueryResult['entities'], apiSource: 'football-api' | 'sofascore' = 'football-api') {
     if (!intent) {
       throw new Error('Intent es requerido para ejecutar la consulta')
     }
+
+    // Route to Sofascore if selected
+    if (apiSource === 'sofascore') {
+      return this.executeSofascoreQuery(intent, entities);
+    }
+
     let endpoint = '';
     const params = new URLSearchParams();
 
@@ -190,6 +196,102 @@ class AIService {
 
     this.lastAPIResponse = data;
 
+    return data;
+  }
+
+  async executeSofascoreQuery(intent: string, entities: QueryResult['entities']) {
+    // Dynamic import to avoid circular dependencies if any, or just standard import
+    // We'll use the API route for Sofascore to keep it consistent with client-side usage if preferred,
+    // but since we are server-side here (or client-side calling this service?), wait.
+    // ai-service.ts is used in page.tsx which is a client component ("use client").
+    // So we should call the API routes we created.
+    
+    let url = '';
+    
+    switch (intent) {
+      case 'fixtures':
+        // Need tournamentId and seasonId. 
+        // We might need to map entities.league (name) to Sofascore tournamentId.
+        // For now, let's default to Premier League (17) and current season if not found.
+        // This requires a mapping or search.
+        // Let's try to search for the tournament if we have a league name.
+        let tournamentId = 17; // Default PL
+        let seasonId = 52186; // Default 23/24 PL
+        
+        if (entities.league) {
+           // TODO: Implement search for tournament ID via Sofascore search endpoint
+           // For this MVP, we might just use the default or basic mapping
+           if (entities.league.toLowerCase().includes('premier')) tournamentId = 17;
+           if (entities.league.toLowerCase().includes('laliga') || entities.league.toLowerCase().includes('la liga')) tournamentId = 8;
+           if (entities.league.toLowerCase().includes('bundesliga')) tournamentId = 35;
+           if (entities.league.toLowerCase().includes('serie a')) tournamentId = 23;
+           if (entities.league.toLowerCase().includes('ligue 1')) tournamentId = 34;
+        }
+
+        // We need to fetch seasons to get the ID for the requested season
+        // For now, let's just fetch events for the tournament
+        // The /api/sofascore/events endpoint requires tournamentId and seasonId
+        // We can fetch seasons first to get the seasonId
+        const seasonsRes = await fetch(`/api/sofascore/seasons?tournamentId=${tournamentId}`);
+        const seasonsData = await seasonsRes.json();
+        if (seasonsData.seasons && seasonsData.seasons.length > 0) {
+            seasonId = seasonsData.seasons[0].id; // Get latest season
+        }
+
+        url = `/api/sofascore/events?tournamentId=${tournamentId}&seasonId=${seasonId}`;
+        if (entities.team) {
+            // We would need teamId. 
+            // For now, let's just return all events for the tournament/season
+        }
+        break;
+
+      case 'standings':
+        let sTournamentId = 17;
+        if (entities.league) {
+           if (entities.league.toLowerCase().includes('premier')) sTournamentId = 17;
+           if (entities.league.toLowerCase().includes('laliga') || entities.league.toLowerCase().includes('la liga')) sTournamentId = 8;
+           if (entities.league.toLowerCase().includes('bundesliga')) sTournamentId = 35;
+           if (entities.league.toLowerCase().includes('serie a')) sTournamentId = 23;
+           if (entities.league.toLowerCase().includes('ligue 1')) sTournamentId = 34;
+        }
+        
+        // Get season ID
+        const sSeasonsRes = await fetch(`/api/sofascore/seasons?tournamentId=${sTournamentId}`);
+        const sSeasonsData = await sSeasonsRes.json();
+        let sSeasonId = 52186;
+        if (sSeasonsData.seasons && sSeasonsData.seasons.length > 0) {
+            sSeasonId = sSeasonsData.seasons[0].id;
+        }
+
+        url = `/api/sofascore/standings?tournamentId=${sTournamentId}&seasonId=${sSeasonId}`;
+        break;
+
+      case 'player_stats':
+        if (entities.player) {
+            // Search for player
+            const searchRes = await fetch(`/api/sofascore/search?q=${encodeURIComponent(entities.player)}`);
+            const searchData = await searchRes.json();
+            const player = searchData.find((r: any) => r.type === 'player');
+            if (player) {
+                url = `/api/sofascore/player?id=${player.entity.id}`;
+            } else {
+                throw new Error(`Jugador ${entities.player} no encontrado en Sofascore`);
+            }
+        } else {
+            throw new Error('Se requiere nombre de jugador para estadísticas de jugador');
+        }
+        break;
+
+      default:
+        throw new Error(`Intent ${intent} no soportado en Sofascore aún`);
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Error fetching from Sofascore: ${response.statusText}`);
+    }
+    const data = await response.json();
+    this.lastAPIResponse = data;
     return data;
   }
 

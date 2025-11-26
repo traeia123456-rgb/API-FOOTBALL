@@ -50,8 +50,21 @@ export default function DashboardPage() {
   const [currentConversationId, setCurrentConversationId] = useState<
     string | null
   >(null);
+  const [selectedApi, setSelectedApi] = useState<'football-api' | 'sofascore'>('football-api');
+  const [showApiMenu, setShowApiMenu] = useState(false);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showApiMenu && !(event.target as Element).closest(`.${styles.apiSelector}`)) {
+        setShowApiMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showApiMenu]);
 
   useEffect(() => {
     async function loadUser() {
@@ -161,7 +174,8 @@ export default function DashboardPage() {
       }
       const apiResponse = await aiService.executeFootballQuery(
         queryData.intent,
-        queryData.entities
+        queryData.entities,
+        selectedApi
       );
 
       const responseTime = Date.now() - startTime;
@@ -658,10 +672,44 @@ export default function DashboardPage() {
           </div>
 
           {/* Chat Input */}
+
+
+          {/* Chat Input */}
           <div className={styles.chatInputContainer}>
             <div className={styles.inputWrapper}>
+              
+              {/* API Selector */}
+              <div className={styles.apiSelector}>
+                <button 
+                  className={styles.apiSelectorBtn}
+                  onClick={() => setShowApiMenu(!showApiMenu)}
+                  title="Seleccionar fuente de datos"
+                >
+                  <span>{selectedApi === 'football-api' ? '⚽ API-Football' : 'S Sofascore'}</span>
+                  <span style={{ fontSize: '0.6rem', opacity: 0.7 }}>▼</span>
+                </button>
+                
+                {showApiMenu && (
+                  <div className={styles.apiMenu}>
+                    <button 
+                      className={`${styles.apiMenuItem} ${selectedApi === 'football-api' ? styles.active : ''}`}
+                      onClick={() => { setSelectedApi('football-api'); setShowApiMenu(false); }}
+                    >
+                      <span>⚽</span> API-Football
+                    </button>
+                    <button 
+                      className={`${styles.apiMenuItem} ${selectedApi === 'sofascore' ? styles.active : ''}`}
+                      onClick={() => { setSelectedApi('sofascore'); setShowApiMenu(false); }}
+                    >
+                      <span>S</span> Sofascore
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <textarea
                 ref={chatInputRef}
+                // ... existing props ...
                 value={chatInput}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}

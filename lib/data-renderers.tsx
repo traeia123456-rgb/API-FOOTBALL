@@ -224,6 +224,120 @@ export function renderTopScorers(scorersData: any): string {
 }
 
 /**
+ * Render player statistics
+ */
+export function renderPlayerStats(playersData: any): string {
+  if (!playersData || !playersData.response || playersData.response.length === 0) {
+    return '<div class="no-data">No se encontraron datos del jugador.</div>';
+  }
+
+  const players = playersData.response;
+
+  let html = `
+    <div class="players-container">
+      <h3>⚽ Estadísticas de Jugadores</h3>
+      <div class="players-list">
+  `;
+
+  players.forEach((playerData: any) => {
+    const player = playerData.player;
+    const stats = playerData.statistics && playerData.statistics.length > 0 ? playerData.statistics[0] : null;
+
+    if (!stats) {
+      html += `
+        <div class="player-card">
+          <div class="player-header">
+            <img src="${player.photo}" alt="${player.name}" class="player-photo">
+            <div class="player-basic-info">
+              <h4>${player.name}</h4>
+              <p>${player.nationality || 'N/A'} • ${player.age || 'N/A'} años</p>
+            </div>
+          </div>
+          <p class="no-stats">No hay estadísticas disponibles para este jugador.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const team = stats.team;
+    const league = stats.league;
+    const games = stats.games;
+    const goals = stats.goals;
+    const passes = stats.passes;
+    const tackles = stats.tackles;
+    const duels = stats.duels;
+
+    html += `
+      <div class="player-card">
+        <div class="player-header">
+          <img src="${player.photo}" alt="${player.name}" class="player-photo">
+          <div class="player-basic-info">
+            <h4>${player.name}</h4>
+            <p>${player.nationality || 'N/A'} • ${player.age || 'N/A'} años</p>
+            <p class="player-position">${games.position || 'N/A'}</p>
+          </div>
+        </div>
+        
+        <div class="player-team-info">
+          <img src="${team.logo}" alt="${team.name}" class="team-logo-small">
+          <span>${team.name}</span>
+          <span class="league-name">${league.name}</span>
+        </div>
+
+        <div class="player-stats-grid">
+          <div class="stat-box">
+            <div class="stat-value">${games.appearences || 0}</div>
+            <div class="stat-label">Partidos</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value">${goals.total || 0}</div>
+            <div class="stat-label">Goles</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value">${goals.assists || 0}</div>
+            <div class="stat-label">Asistencias</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value">${games.rating || 'N/A'}</div>
+            <div class="stat-label">Rating</div>
+          </div>
+        </div>
+
+        ${goals.total && goals.total > 0 ? `
+          <div class="player-details">
+            <h5>Detalles de Goles</h5>
+            <div class="details-grid">
+              <span>Pie derecho: ${goals.right || 0}</span>
+              <span>Pie izquierdo: ${goals.left || 0}</span>
+              <span>Cabeza: ${goals.head || 0}</span>
+              <span>Penales: ${goals.penalty || 0}</span>
+            </div>
+          </div>
+        ` : ''}
+
+        ${passes && passes.accuracy ? `
+          <div class="player-details">
+            <h5>Pases</h5>
+            <div class="details-grid">
+              <span>Precisión: ${passes.accuracy}%</span>
+              <span>Pases clave: ${passes.key || 0}</span>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  });
+
+  html += `
+      </div>
+    </div>
+  `;
+
+  return html;
+}
+
+
+/**
  * Main render function - routes to appropriate renderer
  */
 export function renderFootballData(data: any, intent: string): string {
@@ -235,6 +349,8 @@ export function renderFootballData(data: any, intent: string): string {
       return renderStandings(data);
     case 'topscorers':
       return renderTopScorers(data);
+    case 'player_stats':
+      return renderPlayerStats(data);
     default:
       return `<div class="json-viewer"><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
   }

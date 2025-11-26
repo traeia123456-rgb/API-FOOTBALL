@@ -250,6 +250,17 @@ class AIService {
         params.append('live', 'all');
         break;
 
+      case 'player_stats':
+        endpoint = 'players';
+        if (entities.player) {
+          // First search for the player
+          params.append('search', entities.player);
+        }
+        if (entities.teamId) params.append('team', entities.teamId.toString());
+        if (entities.leagueId) params.append('league', entities.leagueId.toString());
+        if (entities.season) params.append('season', entities.season.toString());
+        break;
+
       default:
         throw new Error(`Intent no soportado: ${intent}`);
     }

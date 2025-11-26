@@ -93,6 +93,76 @@ async function testSupabase() {
   }
 }
 
+// Test Sofascore Port
+async function testSofascorePort() {
+  console.log('\n⚽ Testing Sofascore Port...');
+  
+  const SOFASCORE_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Referer': 'https://www.sofascore.com/',
+    'Origin': 'https://www.sofascore.com',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache'
+  };
+
+  try {
+    // 1. Test Seasons
+    const tournamentId = 1; 
+    console.log(`   Fetching seasons for Tournament ID ${tournamentId}...`);
+    const response = await fetch(`https://api.sofascore.com/api/v1/tournament/${tournamentId}/seasons`, {
+      headers: SOFASCORE_HEADERS
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Sofascore API (Seasons) is reachable!');
+      if (data.seasons && data.seasons.length > 0) {
+        console.log(`   Found ${data.seasons.length} seasons. Latest: ${data.seasons[0].year}`);
+      }
+    } else {
+      console.log('❌ Sofascore API (Seasons) failed:', response.status);
+    }
+
+    // 2. Test Player Search (Luis Diaz)
+    console.log('   Searching for player "Luis Diaz"...');
+    const searchResponse = await fetch(`https://api.sofascore.com/api/v1/search/all?q=Luis%20Diaz`, {
+      headers: SOFASCORE_HEADERS
+    });
+
+    if (searchResponse.ok) {
+      const searchData = await searchResponse.json();
+      console.log('✅ Sofascore API (Search) is reachable!');
+      
+      const player = searchData.results.find(r => r.type === 'player' && r.entity.name === 'Luis Díaz');
+      if (player) {
+        console.log(`   Found player: ${player.entity.name} (ID: ${player.entity.id})`);
+        
+        // 3. Test Player Statistics
+        console.log(`   Fetching statistics for player ${player.entity.id}...`);
+        // Note: Statistics often require a specific season/tournament, or "last year" summary.
+        // Let's try the main player endpoint first
+        const playerResponse = await fetch(`https://api.sofascore.com/api/v1/player/${player.entity.id}`, {
+          headers: SOFASCORE_HEADERS
+        });
+        
+        if (playerResponse.ok) {
+           const playerData = await playerResponse.json();
+           console.log('✅ Sofascore API (Player Details) is reachable!');
+           console.log(`   Team: ${playerData.player.team.name}`);
+        }
+      } else {
+        console.log('   Player Luis Díaz not found in search results.');
+        console.log('   Results:', searchData.results.map(r => r.entity.name).join(', '));
+      }
+    } else {
+      console.log('❌ Sofascore API (Search) failed:', searchResponse.status);
+    }
+
+  } catch (error) {
+    console.log('❌ Sofascore error:', error.message);
+  }
+}
+
 // Run all tests
 async function runTests() {
   console.log('═══════════════════════════════════════════════════');
@@ -102,6 +172,7 @@ async function runTests() {
   await testAPIFootball();
   await testBetsAPI();
   await testSupabase();
+  await testSofascorePort();
   
   console.log('\n═══════════════════════════════════════════════════');
   console.log('  Test Complete');

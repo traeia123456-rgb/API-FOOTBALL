@@ -10,6 +10,7 @@ const FOOTBALL_API_CONFIG = {
 interface QueryResult {
   intent: string | null;
   entities: {
+    player?: string;
     team?: string;
     teamId?: number;
     league?: string;
@@ -57,8 +58,28 @@ class AIService {
       needsSearch: false
     };
 
+    // Detect player-specific queries
+    const playerKeywords = ['goles de', 'gol de', 'estadisticas de', 'stats de', 'jugador'];
+    const hasPlayerQuery = playerKeywords.some(keyword => query.includes(keyword));
+
+    if (hasPlayerQuery) {
+      result.intent = 'player_stats';
+      result.needsSearch = true;
+      
+      // Extract player name (after "de", "del", "de la")
+      const playerMatch = query.match(/(?:goles? de|estadisticas de|stats de|jugador)\s+([a-záéíóúñ\s]+?)(?:\s+en|\s+de|\s+con|$)/i);
+      if (playerMatch) {
+        result.entities.player = playerMatch[1].trim();
+      }
+      
+      // Extract team/country context
+      const teamMatch = query.match(/(?:en|de|con)\s+(?:la\s+)?(?:seleccion\s+de\s+)?([a-záéíóúñ\s]+?)(?:\s|$)/i);
+      if (teamMatch) {
+        result.entities.team = teamMatch[1].trim();
+      }
+    }
     // Detect intent
-    if (query.includes('partido') || query.includes('fixture') || query.includes('match')) {
+    else if (query.includes('partido') || query.includes('fixture') || query.includes('match')) {
       result.intent = 'fixtures';
       result.needsSearch = true;
     } else if (query.includes('clasificacion') || query.includes('tabla') || query.includes('standing')) {
@@ -76,11 +97,12 @@ class AIService {
       result.needsSearch = true;
     }
 
-    // Extract entities using simple patterns
-    // Extract team name (after "de", "del", "de la")
-    const teamMatch = query.match(/(?:de|del|de la)\s+([a-záéíóúñ\s]+?)(?:\s|$)/i);
-    if (teamMatch) {
-      result.entities.team = teamMatch[1].trim();
+    // Extract team name (after "de", "del", "de la") if not already extracted
+    if (!result.entities.team) {
+      const teamMatch = query.match(/(?:de|del|de la)\s+([a-záéíóúñ\s]+?)(?:\s|$)/i);
+      if (teamMatch) {
+        result.entities.team = teamMatch[1].trim();
+      }
     }
 
     // Extract league name

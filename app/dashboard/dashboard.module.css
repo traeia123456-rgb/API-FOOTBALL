@@ -1,6 +1,10 @@
 .dashboardPage {
   min-height: 100vh;
-  background: linear-gradient(135deg, hsl(220, 30%, 10%) 0%, hsl(220, 30%, 5%) 100%);
+  background: linear-gradient(
+    135deg,
+    hsl(220, 30%, 10%) 0%,
+    hsl(220, 30%, 5%) 100%
+  );
 }
 
 .dashboardContainer {
@@ -139,6 +143,25 @@
   text-overflow: ellipsis;
 }
 
+.deleteConvBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  padding: 0.25rem;
+  margin-left: 0.5rem;
+}
+
+.conversationItem:hover .deleteConvBtn {
+  opacity: 0.6;
+}
+
+.deleteConvBtn:hover {
+  opacity: 1 !important;
+}
+
 .noConversations {
   padding: 2rem 1rem;
   text-align: center;
@@ -149,7 +172,6 @@
   color: var(--text-muted);
   margin: 0;
 }
-
 
 .sidebarFooter {
   padding: 1rem;
@@ -233,7 +255,8 @@
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
@@ -388,7 +411,9 @@
 }
 
 @keyframes typingDot {
-  0%, 60%, 100% {
+  0%,
+  60%,
+  100% {
     opacity: 0.3;
     transform: scale(0.8);
   }
@@ -504,4 +529,3 @@
     font-size: 1.5rem;
   }
 }
-

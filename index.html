@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football Assistant - Cargando...</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, hsl(220, 30%, 10%) 0%, hsl(220, 30%, 5%) 100%);
+            font-family: 'Inter', sans-serif;
+        }
+
+        .loader {
+            text-align: center;
+            color: white;
+        }
+
+        .loader-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loader-text {
+            font-size: 1.125rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loader">
+        <div class="loader-icon">⚽</div>
+        <div class="loader-text">Cargando Football Assistant...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="shared/supabase-config.js"></script>
+    <script>
+        // Check authentication and redirect
+        async function checkAuthAndRedirect() {
+            try {
+                const { data: { user }, error } = await supabaseClient.auth.getUser();
+
+                if (error || !user) {
+                    // Not authenticated, redirect to login
+                    window.location.href = '/auth/login.html';
+                } else {
+                    // Authenticated, redirect to dashboard
+                    window.location.href = '/dashboard/dashboard.html';
+                }
+            } catch (error) {
+                console.error('Error checking auth:', error);
+                // On error, redirect to login
+                window.location.href = '/auth/login.html';
+            }
+        }
+
+        // Run check
+        checkAuthAndRedirect();
+    </script>
+</body>
+
+</html>

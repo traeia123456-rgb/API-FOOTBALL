@@ -1,0 +1,382 @@
+'use client'
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { createClientSupabase } from '@/lib/supabase'
+import { aiService } from '@/lib/ai-service'
+import { renderFootballData } from '@/lib/data-renderers'
+import { Toast } from '@/components/Toast'
+import styles from './dashboard.module.css'
+
+interface Profile {
+  email: string
+  token_balance: number
+  role: string
+}
+
+export default function DashboardPage() {
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [chatInput, setChatInput] = useState('')
+  const [messages, setMessages] = useState<Array<{ role: string; content: string; htmlContent?: string }>>([])
+  const [loading, setLoading] = useState(false)
+  const [showWelcome, setShowWelcome] = useState(true)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null)
+  const chatMessagesRef = useRef<HTMLDivElement>(null)
+  const chatInputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    async function loadUser() {
+      const supabase = createClientSupabase()
+      const { data: { user: currentUser }, error } = await supabase.auth.getUser()
+
+      if (error || !currentUser) {
+        router.push('/auth/login')
+        return
+      }
+
+      setUser(currentUser)
+
+      // Load profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .single()
+
+      if (profileData) {
+        setProfile(profileData)
+      }
+    }
+
+    loadUser()
+  }, [router])
+
+  useEffect(() => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight
+    }
+  }, [messages])
+
+  const updateTokenBalance = async () => {
+    if (!user) return
+
+    const supabase = createClientSupabase()
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('token_balance')
+      .eq('id', user.id)
+      .single()
+
+    if (data) {
+      setProfile((prev) => prev ? { ...prev, token_balance: data.token_balance } : null)
+    }
+  }
+
+  const handleSendMessage = async (messageOverride?: string) => {
+    const message = (messageOverride || chatInput).trim()
+    if (!message || loading) return
+
+    if (profile && profile.token_balance < 5) {
+      setToast({ message: 'No tienes suficientes tokens. Contacta al administrador.', type: 'warning' })
+      return
+    }
+
+    // Add user message
+    const userMessage = { role: 'user', content: message }
+    setMessages((prev) => [...prev, userMessage])
+    setChatInput('')
+    setShowWelcome(false)
+    setLoading(true)
+
+    if (chatInputRef.current) {
+      chatInputRef.current.style.height = 'auto'
+    }
+
+    try {
+      const startTime = Date.now()
+
+      // Process query
+      const queryData = await aiService.processUserQuery(message)
+
+      // Execute Football API query
+      if (!queryData.intent) {
+        throw new Error('No se pudo determinar la intención de la consulta')
+      }
+      const apiResponse = await aiService.executeFootballQuery(queryData.intent, queryData.entities)
+
+      const responseTime = Date.now() - startTime
+
+      // Render response
+      const renderedData = renderFootballData(apiResponse, queryData.intent)
+
+      // Add assistant response
+      const assistantMessage = {
+        role: 'assistant',
+        content: `Aquí están los resultados para: "${message}"`,
+        htmlContent: renderedData
+      }
+      setMessages((prev) => [...prev, assistantMessage])
+
+      // Save query to Supabase
+      await saveQuery(message, queryData, apiResponse, responseTime)
+
+      // Update token balance
+      await updateTokenBalance()
+
+      setToast({ message: 'Consulta exitosa', type: 'success' })
+
+    } catch (error: any) {
+      console.error('Error:', error)
+      const errorMessage = {
+        role: 'assistant',
+        content: `❌ Error: ${error.message}`
+      }
+      setMessages((prev) => [...prev, errorMessage])
+      setToast({ message: 'Error al procesar la consulta', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const saveQuery = async (queryText: string, queryData: any, apiResponse: any, responseTime: number) => {
+    if (!user) return
+
+    try {
+      const supabase = createClientSupabase()
+      const { data, error } = await supabase.rpc('consume_tokens', {
+        p_user_id: user.id,
+        p_tokens: 5,
+        p_query_text: queryText,
+        p_intent: queryData.intent,
+        p_entities: queryData.entities,
+        p_response_data: apiResponse,
+        p_response_time_ms: responseTime
+      })
+
+      if (error) throw error
+
+      if (!data.success) {
+        throw new Error(data.error || 'Error al guardar query')
+      }
+
+    } catch (error) {
+      console.error('Error saving query:', error)
+    }
+  }
+
+  const handleLogout = async () => {
+    const supabase = createClientSupabase()
+    await supabase.auth.signOut()
+    router.push('/auth/login')
+  }
+
+  const handleNewChat = () => {
+    setMessages([])
+    setShowWelcome(true)
+    setChatInput('')
+  }
+
+  const handleSuggestionClick = (query: string) => {
+    // Pass the query directly to handleSendMessage to avoid state update race condition
+    handleSendMessage(query)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSendMessage()
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setChatInput(e.target.value)
+    e.target.style.height = 'auto'
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+  }
+
+  if (!user || !profile) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, hsl(220, 30%, 10%) 0%, hsl(220, 30%, 5%) 100%)'
+      }}>
+        <div style={{ textAlign: 'center', color: 'white' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '1rem', animation: 'spin 2s linear infinite' }}>⚽</div>
+          <div style={{ fontSize: '1.125rem', opacity: 0.8 }}>Cargando...</div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.dashboardPage}>
+      <div className={styles.dashboardContainer}>
+        {/* Sidebar */}
+        <aside className={styles.sidebar}>
+          <div className={styles.sidebarHeader}>
+            <div className={styles.userProfile}>
+              <div className={styles.userAvatar}>
+                <span>{profile.email.charAt(0).toUpperCase()}</span>
+              </div>
+              <div className={styles.userInfo}>
+                <div className={styles.userEmail}>{profile.email}</div>
+                <div className={styles.userTokens}>
+                  <span className={styles.tokenIcon}>🪙</span>
+                  <span>{profile.token_balance} tokens</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button className={styles.btnNewChat} onClick={handleNewChat}>
+            <span>➕</span>
+            <span>Nueva Conversación</span>
+          </button>
+
+          <div className={styles.sidebarFooter}>
+            <button className={styles.sidebarBtn} onClick={handleLogout}>
+              <span>🚪</span>
+              <span>Cerrar sesión</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <main className={styles.mainContent}>
+          <header className={styles.dashboardHeader}>
+            <div className={styles.headerLeft}>
+              <h1>
+                <Image src="/logo.png" alt="Football Assistant" width={40} height={40} style={{ verticalAlign: 'middle', marginRight: '10px' }} />
+                Football Assistant
+              </h1>
+              <p className={styles.headerSubtitle}>Consulta datos de fútbol en lenguaje natural</p>
+            </div>
+          </header>
+
+          {/* Chat Area */}
+          <div className={styles.chatArea}>
+            {/* Welcome Screen */}
+            {showWelcome && (
+              <div className={styles.welcomeScreen}>
+                <div className={styles.welcomeContent}>
+                  <div className={styles.welcomeIcon}>
+                    <Image src="/logo.png" alt="Football Assistant" width={100} height={100} />
+                  </div>
+                  <h2>Bienvenido a Football Assistant</h2>
+                  <p>Haz consultas sobre fútbol en lenguaje natural</p>
+
+                  <div className={styles.suggestionCards}>
+                    <button
+                      className={styles.suggestionCard}
+                      onClick={() => handleSuggestionClick('partidos de colombia')}
+                    >
+                      <span className={styles.cardIcon}>🇨🇴</span>
+                      <span className={styles.cardText}>Partidos de Colombia</span>
+                    </button>
+                    <button
+                      className={styles.suggestionCard}
+                      onClick={() => handleSuggestionClick('clasificacion de la premier league')}
+                    >
+                      <span className={styles.cardIcon}>📊</span>
+                      <span className={styles.cardText}>Clasificación Premier League</span>
+                    </button>
+                    <button
+                      className={styles.suggestionCard}
+                      onClick={() => handleSuggestionClick('goleadores de la liga')}
+                    >
+                      <span className={styles.cardIcon}>⚽</span>
+                      <span className={styles.cardText}>Goleadores La Liga</span>
+                    </button>
+                    <button
+                      className={styles.suggestionCard}
+                      onClick={() => handleSuggestionClick('partidos en vivo')}
+                    >
+                      <span className={styles.cardIcon}>🔴</span>
+                      <span className={styles.cardText}>Partidos en vivo</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Chat Messages */}
+            {!showWelcome && (
+              <div className={styles.chatMessages} ref={chatMessagesRef}>
+                {messages.map((msg, idx) => (
+                  <div key={idx} className={`${styles.message} ${styles[msg.role + 'Message']}`}>
+                    <div className={styles.messageAvatar}>
+                      {msg.role === 'user' ? '👤' : '🤖'}
+                    </div>
+                    <div className={styles.messageContent}>
+                      <p>{msg.content}</p>
+                      {msg.htmlContent && (
+                        <div dangerouslySetInnerHTML={{ __html: msg.htmlContent }} />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Typing Indicator */}
+            {loading && (
+              <div className={styles.typingIndicator}>
+                <div className={styles.messageAvatar}>🤖</div>
+                <div className={styles.typingDots}>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Chat Input */}
+          <div className={styles.chatInputContainer}>
+            <div className={styles.inputWrapper}>
+              <textarea
+                ref={chatInputRef}
+                value={chatInput}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                className={styles.chatInput}
+                placeholder="Ej: partidos de colombia"
+                rows={1}
+                disabled={loading}
+              />
+              <button
+                onClick={() => handleSendMessage()}
+                className={styles.sendBtn}
+                disabled={loading || !chatInput.trim()}
+                title="Enviar"
+              >
+                <span>📤</span>
+              </button>
+            </div>
+            <div className={styles.inputHint}>
+              💡 Tip: Usa palabras clave como "partidos", "clasificacion", "goleadores"
+            </div>
+          </div>
+        </main>
+      </div>
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+    </div>
+  )
+}
+

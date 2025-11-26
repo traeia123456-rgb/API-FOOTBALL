@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Football Assistant</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+
+<body class="dashboard-page">
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <!-- User Profile -->
+            <div class="sidebar-header">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <span id="userInitials">U</span>
+                    </div>
+                    <div class="user-info">
+                        <div class="user-email" id="userEmail">Loading...</div>
+                        <div class="user-tokens">
+                            <span class="token-icon">🪙</span>
+                            <span id="tokenBalance">0</span> tokens
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Chat Button -->
+            <button class="btn-new-chat" id="newChatBtn">
+                <span>➕</span>
+                <span>Nueva Conversación</span>
+            </button>
+
+            <!-- Chat History -->
+            <div class="chat-history">
+                <h3 class="history-title">Historial</h3>
+                <div class="history-list" id="historyList">
+                    <!-- History items will be loaded here -->
+                    <div class="history-empty">
+                        <span>📝</span>
+                        <p>No hay conversaciones aún</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer">
+                <button class="sidebar-btn" id="settingsBtn">
+                    <span>⚙️</span>
+                    <span>Configuración</span>
+                </button>
+                <button class="sidebar-btn" id="logoutBtn">
+                    <span>🚪</span>
+                    <span>Cerrar sesión</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <h1>⚽ Football Assistant</h1>
+                    <p class="header-subtitle">Consulta datos de fútbol en lenguaje natural</p>
+                </div>
+                <div class="header-right">
+                    <div class="api-status">
+                        <div class="status-indicator"></div>
+                        <div class="status-text">
+                            <span class="status-count" id="requestsUsed">0</span> /
+                            <span class="status-count" id="requestsLimit">100</span> requests
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Chat Area -->
+            <div class="chat-area">
+                <!-- Welcome Screen (shown when no conversation) -->
+                <div class="welcome-screen" id="welcomeScreen">
+                    <div class="welcome-content">
+                        <div class="welcome-icon">⚽</div>
+                        <h2>Bienvenido a Football Assistant</h2>
+                        <p>Haz consultas sobre fútbol en lenguaje natural</p>
+
+                        <div class="suggestion-cards">
+                            <button class="suggestion-card" data-query="partidos de colombia">
+                                <span class="card-icon">🇨🇴</span>
+                                <span class="card-text">Partidos de Colombia</span>
+                            </button>
+                            <button class="suggestion-card" data-query="clasificacion de la premier league">
+                                <span class="card-icon">📊</span>
+                                <span class="card-text">Clasificación Premier League</span>
+                            </button>
+                            <button class="suggestion-card" data-query="goleadores de la liga">
+                                <span class="card-icon">⚽</span>
+                                <span class="card-text">Goleadores La Liga</span>
+                            </button>
+                            <button class="suggestion-card" data-query="partidos en vivo">
+                                <span class="card-icon">🔴</span>
+                                <span class="card-text">Partidos en vivo</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Messages -->
+                <div class="chat-messages hidden" id="chatMessages">
+                    <!-- Messages will be appended here -->
+                </div>
+
+                <!-- Typing Indicator -->
+                <div class="typing-indicator hidden" id="typingIndicator">
+                    <div class="message-avatar">🤖</div>
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="chat-input-container">
+                <div class="input-wrapper">
+                    <textarea id="chatInput" class="chat-input" placeholder="Ej: partidos de colombia"
+                        rows="1"></textarea>
+                    <button id="sendBtn" class="send-btn" title="Enviar">
+                        <span>📤</span>
+                    </button>
+                </div>
+                <div class="input-hint">
+                    💡 Tip: Usa palabras clave como "partidos", "clasificacion", "goleadores"
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../shared/supabase-config.js"></script>
+    <script src="../shared/auth-guard.js"></script>
+    <script src="../ai-service.js"></script>
+    <script src="../data-renderers.js"></script>
+    <script src="../app.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+
+</html>

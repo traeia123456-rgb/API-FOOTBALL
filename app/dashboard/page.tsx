@@ -9,6 +9,7 @@ import Image from "next/image";
 import { createClientSupabase } from "@/lib/supabase";
 import { aiService } from "@/lib/ai-service";
 import { renderFootballData } from "@/lib/data-renderers";
+import { downloadJSON, downloadCSV, downloadExcel, generateFilename } from "@/lib/export-utils";
 import { Toast } from "@/components/Toast";
 import styles from "./dashboard.module.css";
 
@@ -31,7 +32,13 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState<
-    Array<{ role: string; content: string; htmlContent?: string }>
+    Array<{ 
+      role: string; 
+      content: string; 
+      htmlContent?: string;
+      rawData?: any;
+      intent?: string;
+    }>
   >([]);
   const [loading, setLoading] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
@@ -165,8 +172,10 @@ export default function DashboardPage() {
       // Add assistant response
       const assistantMessage = {
         role: "assistant",
-        content: `Aquí están los resultados para: \"${message}\"`,
+        content: "",
         htmlContent: renderedData,
+        rawData: apiResponse,
+        intent: queryData.intent
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
@@ -598,9 +607,36 @@ export default function DashboardPage() {
                     <div className={styles.messageContent}>
                       <p>{msg.content}</p>
                       {msg.htmlContent && (
-                        <div
-                          dangerouslySetInnerHTML={{ __html: msg.htmlContent }}
-                        />
+                        <>
+                          <div
+                            dangerouslySetInnerHTML={{ __html: msg.htmlContent }}
+                          />
+                          {msg.rawData && msg.intent && (
+                            <div className={styles.exportButtons}>
+                              <button
+                                className={styles.exportBtn}
+                                onClick={() => downloadJSON(msg.rawData, generateFilename(msg.intent || 'data'))}
+                                title="Descargar JSON"
+                              >
+                                📄 JSON
+                              </button>
+                              <button
+                                className={styles.exportBtn}
+                                onClick={() => downloadCSV(msg.rawData, generateFilename(msg.intent || 'data'))}
+                                title="Descargar CSV"
+                              >
+                                📊 CSV
+                              </button>
+                              <button
+                                className={styles.exportBtn}
+                                onClick={() => downloadExcel(msg.rawData, generateFilename(msg.intent || 'data'))}
+                                title="Descargar Excel"
+                              >
+                                📗 Excel
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

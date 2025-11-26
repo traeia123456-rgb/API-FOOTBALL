@@ -92,6 +92,65 @@
   box-shadow: 0 10px 25px rgba(79, 209, 197, 0.3);
 }
 
+/* Conversation List */
+.conversationList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.conversationItem {
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.conversationItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--primary);
+}
+
+.conversationItem.active {
+  background: rgba(79, 209, 197, 0.1);
+  border-color: var(--primary);
+}
+
+.conversationIcon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.conversationTitle {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.noConversations {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.noConversations p {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+
 .sidebarFooter {
   padding: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);

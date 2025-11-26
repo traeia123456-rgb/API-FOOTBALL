@@ -18,6 +18,13 @@ interface Profile {
   role: string
 }
 
+interface Conversation {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
@@ -27,6 +34,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false)
   const [showWelcome, setShowWelcome] = useState(true)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null)
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
   const chatMessagesRef = useRef<HTMLDivElement>(null)
   const chatInputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -50,8 +59,14 @@ export default function DashboardPage() {
         .single()
 
       if (profileData) {
+        console.log('Profile loaded:', profileData) // DEBUG: Check role
         setProfile(profileData)
+      } else {
+        console.log('No profile data found', profileError)
       }
+
+      // Load conversations
+      loadConversations()
     }
 
     loadUser()
@@ -87,12 +102,25 @@ export default function DashboardPage() {
       return
     }
 
+    // Create conversation if this is the first message
+    let conversationId = currentConversationId
+    if (!conversationId) {
+      conversationId = await createNewConversation(message)
+      if (!conversationId) {
+        setToast({ message: 'Error al crear conversación', type: 'error' })
+        return
+      }
+    }
+
     // Add user message
     const userMessage = { role: 'user', content: message }
     setMessages((prev) => [...prev, userMessage])
     setChatInput('')
     setShowWelcome(false)
     setLoading(true)
+
+    // Save user message to conversation
+    await saveMessageToConversation(conversationId, 'user', message)
 
     if (chatInputRef.current) {
       chatInputRef.current.style.height = 'auto'
@@ -118,10 +146,13 @@ export default function DashboardPage() {
       // Add assistant response
       const assistantMessage = {
         role: 'assistant',
-        content: `Aquí están los resultados para: "${message}"`,
+        content: `Aquí están los resultados para: \"${message}\"`,
         htmlContent: renderedData
       }
       setMessages((prev) => [...prev, assistantMessage])
+
+      // Save assistant message to conversation
+      await saveMessageToConversation(conversationId, 'assistant', renderedData)
 
       // Save query to Supabase
       await saveQuery(message, queryData, apiResponse, responseTime)
@@ -170,16 +201,93 @@ export default function DashboardPage() {
     }
   }
 
+  const loadConversations = async () => {
+    if (!user) return
+
+    const supabase = createClientSupabase()
+    const { data, error } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(20)
+
+    if (data && !error) {
+      setConversations(data)
+    }
+  }
+
+  const createNewConversation = async (firstMessage: string) => {
+    if (!user) return null
+
+    const supabase = createClientSupabase()
+    const { data, error } = await supabase
+      .from('conversations')
+      .insert({
+        user_id: user.id,
+        title: firstMessage.substring(0, 50) + (firstMessage.length > 50 ? '...' : '')
+      })
+      .select()
+      .single()
+
+    if (data && !error) {
+      setConversations(prev => [data, ...prev])
+      setCurrentConversationId(data.id)
+      return data.id
+    }
+
+    return null
+  }
+
+  const switchConversation = async (conversationId: string) => {
+    if (!user) return
+
+    setCurrentConversationId(conversationId)
+    setShowWelcome(false)
+
+    // Load messages for this conversation
+    const supabase = createClientSupabase()
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true })
+
+    if (data && !error) {
+      const loadedMessages = data.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        htmlContent: msg.role === 'assistant' ? msg.content : undefined
+      }))
+      setMessages(loadedMessages)
+    }
+  }
+
+  const saveMessageToConversation = async (conversationId: string, role: string, content: string) => {
+    if (!user) return
+
+    const supabase = createClientSupabase()
+    await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        user_id: user.id,
+        role,
+        content
+      })
+  }
+
   const handleLogout = async () => {
     const supabase = createClientSupabase()
     await supabase.auth.signOut()
     router.push('/auth/login')
   }
 
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
     setMessages([])
     setShowWelcome(true)
     setChatInput('')
+    setCurrentConversationId(null)
   }
 
   const handleSuggestionClick = (query: string) => {
@@ -242,7 +350,34 @@ export default function DashboardPage() {
             <span>Nueva Conversación</span>
           </button>
 
+          {/* Conversation History */}
+          <div className={styles.conversationList}>
+            {conversations.length > 0 ? (
+              conversations.map((conv) => (
+                <button
+                  key={conv.id}
+                  className={`${styles.conversationItem} ${currentConversationId === conv.id ? styles.active : ''}`}
+                  onClick={() => switchConversation(conv.id)}
+                  title={conv.title}
+                >
+                  <span className={styles.conversationIcon}>💬</span>
+                  <span className={styles.conversationTitle}>{conv.title}</span>
+                </button>
+              ))
+            ) : (
+              <div className={styles.noConversations}>
+                <p>No hay conversaciones aún</p>
+              </div>
+            )}
+          </div>
+
           <div className={styles.sidebarFooter}>
+            {profile?.role === 'admin' && (
+              <button className={styles.sidebarBtn} onClick={() => router.push('/admin')}>
+                <span>🔧</span>
+                <span>Panel Admin</span>
+              </button>
+            )}
             <button className={styles.sidebarBtn} onClick={handleLogout}>
               <span>🚪</span>
               <span>Cerrar sesión</span>

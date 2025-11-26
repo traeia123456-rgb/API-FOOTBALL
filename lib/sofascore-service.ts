@@ -159,6 +159,30 @@ export class SofascoreService {
     }
     return data.statistics[0].groups;
   }
+
+  async search(query: string) {
+    const data = await this.fetch(`/search/all?q=${encodeURIComponent(query)}`);
+    return data.results;
+  }
+
+  async getPlayer(playerId: number) {
+    const data = await this.fetch(`/player/${playerId}`);
+    return data.player;
+  }
+
+  async getPlayerStatistics(playerId: number, seasonId: number, tournamentId: number) {
+    // Statistics for a player in a specific season/tournament
+    const data = await this.fetch(`/player/${playerId}/unique-tournament/${tournamentId}/season/${seasonId}/statistics/overall`);
+    return data.statistics;
+  }
+
+  async getPlayerLastYearSummary(playerId: number) {
+    // Useful for the "Resumen (últimos 12 meses)" chart
+    // Note: This endpoint might vary, but let's try a common one or just rely on season stats.
+    // Sofascore often has /player/{id}/statistics/seasons
+    const data = await this.fetch(`/player/${playerId}/statistics/seasons`);
+    return data.uniqueTournamentSeasons;
+  }
 }
 
 export const sofascoreService = new SofascoreService();

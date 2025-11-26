@@ -45,6 +45,32 @@ export async function GET(
       if (!eventId) throw new Error('eventId is required');
       result = await sofascoreService.getEventStatistics(parseInt(eventId));
     }
+    // /api/sofascore/search?q=Messi
+    else if (endpoint === 'search') {
+      const q = request.nextUrl.searchParams.get('q');
+      if (!q) throw new Error('q (query) is required');
+      result = await sofascoreService.search(q);
+    }
+    // /api/sofascore/player?id=123
+    else if (endpoint === 'player') {
+      const id = request.nextUrl.searchParams.get('id');
+      if (!id) throw new Error('id is required');
+      result = await sofascoreService.getPlayer(parseInt(id));
+    }
+    // /api/sofascore/player-statistics?playerId=123&seasonId=456&tournamentId=789
+    else if (endpoint === 'player-statistics') {
+      const playerId = request.nextUrl.searchParams.get('playerId');
+      const seasonId = request.nextUrl.searchParams.get('seasonId');
+      const tournamentId = request.nextUrl.searchParams.get('tournamentId');
+      
+      if (!playerId || !seasonId || !tournamentId) throw new Error('playerId, seasonId, and tournamentId are required');
+      
+      result = await sofascoreService.getPlayerStatistics(
+        parseInt(playerId),
+        parseInt(seasonId),
+        parseInt(tournamentId)
+      );
+    }
     else {
       return NextResponse.json({ error: 'Invalid endpoint' }, { status: 404 });
     }
